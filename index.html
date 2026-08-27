@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="id" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash of Champions - Game Show Edukasi Interaktif</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        coc: {
+                            dark: '#070a13',
+                            panel: '#0f1629',
+                            card: '#161f38',
+                            gold: '#f59e0b',
+                            cyan: '#06b6d4',
+                            purple: '#6366f1',
+                            accent: '#10b981'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s infinite alternate',
+                        'bounce-short': 'bounceShort 0.35s ease-in-out',
+                        'shake': 'shake 0.4s ease-in-out'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%': { boxShadow: '0 0 15px rgba(6, 182, 212, 0.3)' },
+                            '100%': { boxShadow: '0 0 35px rgba(245, 158, 11, 0.6)' }
+                        },
+                        bounceShort: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.06)' }
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-12px)' },
+                            '40%, 80%': { transform: 'translateX(12px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #070a13;
+            background-image: linear-gradient(to bottom, rgba(7, 10, 19, 0.82), rgba(15, 22, 41, 0.92)), url('bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(15, 22, 41, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .gold-glow {
+            border: 2px solid rgba(245, 158, 11, 0.7);
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+        }
+
+        .cyan-glow {
+            border: 2px solid rgba(6, 182, 212, 0.7);
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+        }
+
+        .indigo-glow {
+            border: 2px solid rgba(99, 102, 241, 0.7);
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
+        }
+
+        .drop-slot {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .drop-slot.drag-over {
+            background-color: rgba(6, 182, 212, 0.3) !important;
+            border-color: #06b6d4 !important;
+            transform: scale(1.04);
+        }
+
+        .selected-shelf-item {
+            outline: 3px solid #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+            transform: scale(1.08);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #070a13; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-100">
+
+    <!-- FULLSCREEN ANSWER FEEDBACK OVERLAY WITH CONTINUE BUTTON -->
+    <div id="feedback-overlay" class="fixed inset-0 z-[60] flex flex-col items-center justify-center transition-all duration-200 hidden select-none p-6">
+        <div id="feedback-content" class="flex flex-col items-center justify-center space-y-6 text-center max-w-lg w-full transform transition-transform">
+            <i id="feedback-icon" class="text-8xl sm:text-9xl text-white drop-shadow-2xl"></i>
+            <h2 id="feedback-text" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-wider uppercase drop-shadow-2xl" style="font-family: 'Rajdhani', sans-serif;">
+                JAWABAN BENAR
+            </h2>
+            
+            <!-- Dedicated Action Button to Proceed/Retry -->
+            <button id="feedback-continue-btn" onclick="continueFromFeedback()" class="px-8 py-4 bg-white text-slate-950 hover:bg-slate-100 active:scale-95 font-black text-lg sm:text-xl rounded-2xl shadow-2xl transition-all flex items-center gap-3 mt-4 border-2 border-white cursor-pointer">
+                <span>LANJUTKAN</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <header class="w-full glass-panel border-b border-slate-800 sticky top-0 z-40 px-4 py-3 shadow-2xl">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <!-- Brand Logo & Header -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showMainMenu()">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-cyan-400 p-[2px] shadow-lg shadow-amber-500/20 flex-shrink-0">
+                    <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                        <span class="font-black text-amber-400 text-lg tracking-tighter" style="font-family: 'Rajdhani', sans-serif;">CoC</span>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="font-black text-lg sm:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-cyan-300 to-indigo-300" style="font-family: 'Rajdhani', sans-serif;">
+                        CLASH OF CHAMPIONS
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 font-bold tracking-widest uppercase">Arena Edukasi Interaktif PID / IFP</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons for PID/IFP -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button id="fullscreen-btn" onclick="toggleFullscreen()" title="Layar Penuh (IFP)" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-400 transition-all border border-slate-700/60 flex items-center gap-1.5 text-xs sm:text-sm font-semibold">
+                    <i id="fullscreen-icon" class="fa-solid fa-expand"></i>
+                    <span class="hidden md:inline">Layar Penuh (PID/IFP)</span>
+                </button>
+                <button id="sound-toggle-btn" onclick="toggleAudioMute()" title="Suara Efek" class="p-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-400 transition-all border border-slate-700/60">
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-base"></i>
+                </button>
+                <button onclick="showMainMenu()" title="Menu Utama" class="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-bold text-xs sm:text-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="hidden sm:inline">Menu Utama</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center items-center">
+
+        <!-- VIEW 1: MAIN MENU & GRADE SELECTION -->
+        <section id="menu-screen" class="w-full max-w-4xl flex flex-col items-center py-4 space-y-8">
+            
+            <!-- Hero Title -->
+            <div class="text-center space-y-3 relative">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-bold tracking-widest uppercase">
+                    <i class="fa-solid fa-trophy text-amber-400"></i> Game Show Edukasi Interaktif
+                </div>
+                <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase drop-shadow-lg" style="font-family: 'Rajdhani', sans-serif;">
+                    PILIH <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-cyan-300 to-amber-200">MODUL ARENA</span>
+                </h2>
+                <p class="text-slate-300 text-xs sm:text-base max-w-xl mx-auto font-medium">
+                    Simulasi kompetisi ala Clash of Champions. Uji kecepatan hitung, ingatan visual, dan ketajaman audio!
+                </p>
+            </div>
+
+            <!-- Grade Level Selector Tabs -->
+            <div class="w-full glass-panel p-2 rounded-2xl flex border border-slate-700/80 shadow-2xl max-w-lg">
+                <button id="tab-low" onclick="selectGradeLevel('low')" class="flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid fa-child text-base"></i> Kelas Rendah (SD 1–3)
+                </button>
+                <button id="tab-high" onclick="selectGradeLevel('high')" class="flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-graduation-cap text-base"></i> Kelas Tinggi (SD 4–6)
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pt-2">
+                
+                <!-- Game 1: Numeric -->
+                <div onclick="startGame('numeric')" class="glass-panel hover:bg-slate-800/90 rounded-2xl p-6 border border-slate-700 hover:border-amber-400/80 cursor-pointer transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-500/15 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl mb-4 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+                            <i class="fa-solid fa-calculator"></i>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-white group-hover:text-amber-300 transition-colors">1. NUMERIC</h3>
+                        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                            Hitung total penjumlahan angka di grid. Angka langsung diacak tiap jawaban benar.<br>
+                            <span id="numeric-card-desc" class="text-amber-400 font-semibold">• Grid 2x2 (Rentang 1–15)</span>
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-xs font-bold text-amber-400">
+                        <span>Mulai Tantangan</span>
+                        <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- Game 2: Memorize -->
+                <div onclick="startGame('memorize')" class="glass-panel hover:bg-slate-800/90 rounded-2xl p-6 border border-slate-700 hover:border-cyan-400/80 cursor-pointer transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/15 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl mb-4 group-hover:scale-110 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-all">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">2. MEMORIZE</h3>
+                        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                            Ingat posisi gambar (15 dtk), lalu susun kembali dari rak (60 dtk) via Drag & Drop atau Tap.<br>
+                            <span id="memorize-card-desc" class="text-cyan-400 font-semibold">• Grid 3x2 (6 Gambar Hewan)</span>
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-xs font-bold text-cyan-400">
+                        <span>Mulai Tantangan</span>
+                        <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- Game 3: Voice Numeric -->
+                <div onclick="startGame('voice')" class="glass-panel hover:bg-slate-800/90 rounded-2xl p-6 border border-slate-700 hover:border-indigo-400/80 cursor-pointer transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/15 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl mb-4 group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-slate-950 transition-all">
+                            <i class="fa-solid fa-headphones"></i>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-white group-hover:text-indigo-300 transition-colors">3. VOICE NUMERIC</h3>
+                        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                            Dengarkan audio soal dari 5 kartu, masukkan jawaban menggunakan panel angka (0–9).<br>
+                            <span id="voice-card-desc" class="text-indigo-400 font-semibold">• Kartu Soal: A, B, C, D, E</span>
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-xs font-bold text-indigo-400">
+                        <span>Mulai Tantangan</span>
+                        <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Banner -->
+            <div class="glass-panel p-4 rounded-xl border border-slate-800 text-slate-400 text-xs w-full flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-display text-cyan-400 text-base"></i>
+                    <span>Dioptimalkan untuk Papan Interaktif Digital (PID / IFP) & Touchscreen</span>
+                </div>
+                <span class="font-mono text-slate-400 font-bold">Clash of Champions Edition</span>
+            </div>
+        </section>
+
+        <!-- VIEW 2: GAMEPLAY ARENA SCREEN -->
+        <section id="game-screen" class="w-full hidden flex-col items-center space-y-6">
+            
+            <!-- Top Status Bar -->
+            <div class="w-full glass-panel rounded-2xl p-4 border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+                <!-- Module Badge -->
+                <div class="flex items-center gap-3">
+                    <button onclick="showMainMenu()" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg bg-slate-800/50 border border-slate-700">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </button>
+                    <div>
+                        <div id="game-title-badge" class="font-black text-lg sm:text-xl text-amber-400 tracking-wide" style="font-family: 'Rajdhani', sans-serif;">
+                            NUMERIC CHALLENGE
+                        </div>
+                        <div id="game-level-badge" class="text-xs text-slate-300 font-semibold">
+                            Tingkat: SD Kelas Rendah (1–3)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer Indicator -->
+                <div class="flex items-center gap-3 bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-800 shadow-inner">
+                    <i class="fa-solid fa-stopwatch text-cyan-400 text-xl animate-pulse"></i>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Waktu</span>
+                        <span id="timer-display" class="font-mono font-extrabold text-xl text-cyan-300">00:00</span>
+                    </div>
+                </div>
+
+                <!-- Score / Progress Meter -->
+                <div class="flex items-center gap-3 bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-800 shadow-inner">
+                    <i class="fa-solid fa-bullseye text-amber-400 text-xl"></i>
+                    <div class="flex flex-col">
+                        <span id="score-label" class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Target Benar</span>
+                        <span id="score-display" class="font-mono font-extrabold text-xl text-amber-400">0 / 4</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Task Instruction Banner -->
+            <div id="instruction-banner" class="w-full glass-panel py-3 px-6 rounded-xl border border-indigo-500/30 text-center font-bold text-sm sm:text-base text-indigo-200 bg-indigo-950/40 shadow-lg">
+                Tugas: Hitung jumlah total angka pada grid!
+            </div>
+
+            <!-- MODUL 1: NUMERIC MODULE -->
+            <div id="numeric-module" class="w-full hidden grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- Panel Kiri: Grid (2x2 / 3x3) -->
+                <div class="lg:col-span-7 glass-panel p-5 rounded-2xl gold-glow shadow-2xl flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-3 px-1">
+                        <span id="numeric-grid-title" class="text-xs font-bold text-amber-400 uppercase tracking-widest"><i class="fa-solid fa-grip text-sm mr-1.5"></i> Grid Angka Acak</span>
+                        <span id="numeric-range-badge" class="text-xs font-mono bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30">Rentang 1–15</span>
+                    </div>
+                    <div id="numeric-grid" class="w-full min-h-[220px] flex items-center justify-center">
+                        <!-- Number Grid generated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Panel Kanan: Kolom Input, Submit, Numpad Digital IFP -->
+                <div class="lg:col-span-5 glass-panel p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col space-y-4">
+                    <div class="text-xs font-bold text-slate-300 uppercase tracking-widest border-b border-slate-800 pb-2">
+                        <i class="fa-solid fa-pen-to-square text-amber-400 mr-1.5"></i> Panel Input Jawaban
+                    </div>
+
+                    <!-- Input Form -->
+                    <form id="numeric-form" onsubmit="submitNumericAnswer(event)" class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-300">Total Penjumlahan Angka:</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="numeric-input" placeholder="Jawaban..." required autocomplete="off"
+                                class="flex-1 bg-slate-950 border border-slate-700 text-amber-400 font-mono text-center text-2xl font-extrabold rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400 transition-all placeholder:text-slate-600 placeholder:text-base">
+                            <button type="submit" class="px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-2">
+                                <span>KIRIM</span>
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- On-Screen Numpad for PID / IFP Touchscreen Convenience -->
+                    <div class="space-y-2 pt-2">
+                        <span class="text-[11px] text-slate-400 font-semibold uppercase">Papan Ketik Layar Interaktif:</span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="appendNumpad('numeric-input', '1')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">1</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '2')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">2</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '3')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">3</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '4')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">4</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '5')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">5</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '6')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">6</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '7')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">7</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '8')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">8</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '9')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">9</button>
+                            <button type="button" onclick="clearNumpad('numeric-input')" class="py-3 bg-rose-950/70 border border-rose-800/80 hover:bg-rose-900 rounded-xl font-bold text-sm text-rose-300">C</button>
+                            <button type="button" onclick="appendNumpad('numeric-input', '0')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">0</button>
+                            <button type="button" onclick="backspaceNumpad('numeric-input')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-amber-500 active:text-slate-950 rounded-xl font-bold text-base text-amber-400 transition-all border border-slate-700/60"><i class="fa-solid fa-delete-left"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODUL 2: MEMORIZE MODULE -->
+            <div id="memorize-module" class="w-full hidden flex-col items-center space-y-4 max-w-5xl">
+                <!-- Phase Indicator Banner -->
+                <div id="memorize-phase-indicator" class="w-full flex items-center justify-between px-5 py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs sm:text-sm font-extrabold text-cyan-300 shadow-md">
+                    <span>FASE 1: INGAT POSISI GAMBAR HEWAN</span>
+                    <span id="phase-timer-text" class="font-mono text-amber-400">15 DETIK</span>
+                </div>
+
+                <!-- 2-Panel Split Layout: Left Grid, Right Choice Shelf -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+                    
+                    <!-- Panel Kiri: Grid Papan Gambar Slot -->
+                    <div class="lg:col-span-7 glass-panel p-5 rounded-2xl cyan-glow shadow-2xl flex flex-col items-center">
+                        <div class="w-full flex justify-between items-center mb-3 px-1">
+                            <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest"><i class="fa-solid fa-table-cells text-sm mr-1.5"></i> Papan Slot Gambar</span>
+                            <span id="memorize-grid-size-badge" class="text-xs font-mono bg-cyan-500/20 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/30">Grid 3x2</span>
+                        </div>
+                        <div id="memorize-grid" class="w-full">
+                            <!-- Memory slots dynamically generated -->
+                        </div>
+                    </div>
+
+                    <!-- Panel Kanan: Rak Pilihan Gambar Hewan (Aktif di Fase 2) -->
+                    <div class="lg:col-span-5 glass-panel p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4 min-h-[350px]">
+                        <div>
+                            <div class="text-xs font-bold text-slate-300 uppercase tracking-widest border-b border-slate-800 pb-2 mb-3 flex justify-between items-center">
+                                <span><i class="fa-solid fa-boxes-stacked text-amber-400 mr-1.5"></i> Rak Pilihan Gambar</span>
+                                <span class="text-[10px] text-cyan-400 font-semibold">Drag & Drop / Tap Slot</span>
+                            </div>
+
+                            <p id="shelf-instruction" class="text-xs text-slate-400 mb-3 italic">
+                                Pada Fase 1, rak ini kosong. Gambar akan dipindahkan ke sini saat Fase 2 dimulai!
+                            </p>
+
+                            <!-- Rak Pilihan Icons -->
+                            <div id="memorize-shelf" class="flex flex-wrap gap-2.5 p-4 bg-slate-950/80 rounded-xl border border-slate-800 min-h-[160px] items-center justify-center">
+                                <!-- Animal tiles loaded in Phase 2 -->
+                            </div>
+                        </div>
+
+                        <!-- Verification Submit Button -->
+                        <button id="memorize-submit-btn" onclick="checkMemorizeAnswer()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-sm rounded-xl shadow-xl shadow-cyan-500/20 transition-all hidden flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check-double text-lg"></i>
+                            <span>VERIFIKASI SUSUNAN GAMBAR</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- MODUL 3: VOICE NUMERIC MODULE -->
+            <div id="voice-module" class="w-full hidden flex-col items-center space-y-6 max-w-4xl">
+                
+                <!-- 5 Question Cards Container -->
+                <div id="voice-cards-container" class="grid grid-cols-2 sm:grid-cols-5 gap-3.5 w-full">
+                    <!-- 5 Cards (A-E or 1-5) rendered here -->
+                </div>
+
+                <!-- Active Question Audio Player & Input Panel -->
+                <div id="voice-active-panel" class="w-full glass-panel p-6 sm:p-8 rounded-2xl indigo-glow shadow-2xl flex flex-col items-center text-center space-y-5">
+                    <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/40 flex items-center justify-center text-indigo-400 text-3xl animate-pulse">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </div>
+
+                    <div>
+                        <h3 id="voice-card-title" class="font-black text-2xl text-white tracking-wide" style="font-family: 'Rajdhani', sans-serif;">
+                            PILIH KARTU SOAL DI ATAS
+                        </h3>
+                        <p id="voice-card-status" class="text-xs sm:text-sm text-slate-300 mt-1">
+                            Klik salah satu dari 5 kartu soal di atas untuk mendengarkan audio instruksi.
+                        </p>
+                    </div>
+
+                    <!-- Audio Play Button -->
+                    <button id="play-audio-btn" disabled onclick="playCurrentCardAudio()" class="px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-extrabold text-sm transition-all flex items-center gap-2.5 shadow-lg shadow-indigo-500/20 active:scale-95">
+                        <i class="fa-solid fa-play text-base"></i>
+                        <span>PUTAR SUARA SOAL</span>
+                    </button>
+
+                    <!-- Answer Input & Dedicated On-Screen Numpad Panel (0-9) -->
+                    <div class="w-full max-w-md space-y-4 pt-2">
+                        <form id="voice-form" onsubmit="submitVoiceAnswer(event)" class="space-y-3">
+                            <div class="flex gap-2">
+                                <input type="number" id="voice-input" placeholder="Jawaban Angka..." disabled required autocomplete="off"
+                                    class="flex-1 bg-slate-950 border border-slate-700 text-indigo-300 font-mono text-center text-2xl font-extrabold rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-400 transition-all disabled:opacity-40">
+                                <button type="submit" id="voice-submit-btn" disabled class="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all disabled:opacity-40 active:scale-95 flex items-center gap-2">
+                                    <span>SIMPAN</span>
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Panel Angka (0, 1 - 9) untuk Voice Numeric -->
+                        <div class="space-y-2 text-left">
+                            <span class="text-[11px] text-slate-400 font-semibold uppercase">Panel Angka (0-9) Soal Audio:</span>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="appendNumpad('voice-input', '1')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">1</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '2')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">2</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '3')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">3</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '4')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">4</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '5')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">5</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '6')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">6</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '7')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">7</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '8')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">8</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '9')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">9</button>
+                                <button type="button" onclick="clearNumpad('voice-input')" class="py-3 bg-rose-950/70 border border-rose-800/80 hover:bg-rose-900 rounded-xl font-bold text-sm text-rose-300">C</button>
+                                <button type="button" onclick="appendNumpad('voice-input', '0')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-extrabold text-xl text-slate-100 transition-all border border-slate-700/60">0</button>
+                                <button type="button" onclick="backspaceNumpad('voice-input')" class="py-3 bg-slate-800/90 hover:bg-slate-700 active:bg-indigo-500 active:text-white rounded-xl font-bold text-base text-amber-400 transition-all border border-slate-700/60"><i class="fa-solid fa-delete-left"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- RESULT MODAL DIALOG -->
+    <div id="game-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700 p-6 sm:p-8 flex flex-col items-center text-center space-y-5 shadow-2xl transform transition-all scale-95 opacity-0" id="modal-box">
+            
+            <!-- Modal Badge Icon -->
+            <div id="modal-badge" class="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-4xl shadow-inner">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <!-- Modal Title & Message -->
+            <div>
+                <h3 id="modal-title" class="text-2xl sm:text-3xl font-black text-white tracking-wide uppercase" style="font-family: 'Rajdhani', sans-serif;">
+                    CHAMPION!
+                </h3>
+                <p id="modal-desc" class="text-slate-300 text-xs sm:text-sm mt-2 leading-relaxed">
+                    Luar biasa! Anda berhasil menyelesaikan semua tantangan dengan akurat!
+                </p>
+            </div>
+
+            <!-- Stats Table -->
+            <div id="modal-stats" class="w-full bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 text-xs font-bold grid grid-cols-2 gap-3 text-slate-300">
+                <div class="flex flex-col p-2.5 bg-slate-800/60 rounded-lg">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Waktu Penyelesaian</span>
+                    <span id="stat-time" class="font-mono text-base text-cyan-300 font-extrabold mt-0.5">00:45</span>
+                </div>
+                <div class="flex flex-col p-2.5 bg-slate-800/60 rounded-lg">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Hasil Capaian</span>
+                    <span id="stat-score" class="font-mono text-base text-amber-400 font-extrabold mt-0.5">100%</span>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="flex gap-3 w-full pt-2">
+                <button onclick="showMainMenu()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs transition-all border border-slate-700">
+                    MENU UTAMA
+                </button>
+                <button id="modal-restart-btn" onclick="restartCurrentGame()" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition-all">
+                    MAIN LAGI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            gradeLevel: 'low', // 'low' (SD 1-3) or 'high' (SD 4-6)
+            currentMode: null,  // 'numeric', 'memorize', 'voice'
+            score: 0,
+            targetScore: 4,
+            timerInterval: null,
+            secondsElapsed: 0,
+            timeLeft: 0,
+            isMuted: false,
+
+            // Numeric Mode Data
+            numericGridData: [],
+            numericTargetSum: 0,
+
+            // Memorize Mode Data
+            memorizePhase: 1, // 1: Memorize (15s), 2: Reconstruct (60s)
+            memorizeGridCols: 3, // 3x2 (low) or 3x3 (high)
+            memorizeGridRows: 2,
+            memorizeAnimals: [],
+            memorizeOriginalOrder: [],
+            memorizeUserOrder: [],
+            memorizeShelfItems: [],
+            selectedShelfIndex: null,
+
+            // Voice Numeric Data
+            voiceCards: [],
+            activeVoiceIndex: null
+        };
+
+        let feedbackCallback = null;
+
+        // Animal Pool (Emoji Icons)
+        const ANIMAL_POOL = [
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', 
+            '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', 
+            '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🦋', '🐞'
+        ];
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playCorrectSound() {
+            if (state.isMuted) return;
+            const audio = new Audio('benar.mp3');
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    synthesizeTone('correct');
+                });
+            }
+        }
+
+        function playWrongSound() {
+            if (state.isMuted) return;
+            const audio = new Audio('salah.mp3');
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    synthesizeTone('wrong');
+                });
+            }
+        }
+
+        function synthesizeTone(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(480, now);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+                    osc.start(now);
+                    osc.stop(now + 0.06);
+                }
+            } catch (e) {
+                console.log('Audio synth fallback error');
+            }
+        }
+
+        function playSound(type) {
+            if (state.isMuted) return;
+            if (type === 'correct') {
+                playCorrectSound();
+            } else if (type === 'wrong') {
+                playWrongSound();
+            } else {
+                synthesizeTone(type);
+            }
+        }
+
+        // FULLSCREEN ANSWER FEEDBACK OVERLAY (WITH MANUAL CONTINUE BUTTON)
+        function showAnswerFeedback(isCorrect, callback) {
+            const overlay = document.getElementById('feedback-overlay');
+            const icon = document.getElementById('feedback-icon');
+            const text = document.getElementById('feedback-text');
+            const btn = document.getElementById('feedback-continue-btn');
+
+            feedbackCallback = callback;
+
+            if (isCorrect) {
+                overlay.className = "fixed inset-0 z-[60] flex flex-col items-center justify-center bg-emerald-600 transition-all duration-200 animate-pulse text-white p-6";
+                icon.className = "fa-solid fa-circle-check text-8xl sm:text-9xl mb-2 drop-shadow-2xl animate-bounce-short";
+                text.textContent = "JAWABAN BENAR";
+                btn.innerHTML = `<span>LANJUTKAN</span> <i class="fa-solid fa-arrow-right"></i>`;
+                btn.className = "px-8 py-4 bg-white text-emerald-950 hover:bg-emerald-50 active:scale-95 font-black text-lg sm:text-xl rounded-2xl shadow-2xl transition-all flex items-center gap-3 mt-4 border-2 border-white cursor-pointer";
+            } else {
+                overlay.className = "fixed inset-0 z-[60] flex flex-col items-center justify-center bg-rose-600 transition-all duration-200 animate-shake text-white p-6";
+                icon.className = "fa-solid fa-circle-xmark text-8xl sm:text-9xl mb-2 drop-shadow-2xl";
+                text.textContent = "JAWABAN SALAH";
+                btn.innerHTML = `<span>COBA LAGI</span> <i class="fa-solid fa-rotate-right"></i>`;
+                btn.className = "px-8 py-4 bg-white text-rose-950 hover:bg-rose-50 active:scale-95 font-black text-lg sm:text-xl rounded-2xl shadow-2xl transition-all flex items-center gap-3 mt-4 border-2 border-white cursor-pointer";
+            }
+
+            overlay.classList.remove('hidden');
+        }
+
+        function continueFromFeedback() {
+            playSound('click');
+            const overlay = document.getElementById('feedback-overlay');
+            overlay.classList.add('hidden');
+            if (feedbackCallback) {
+                const cb = feedbackCallback;
+                feedbackCallback = null;
+                cb();
+            }
+        }
+
+        function hideAnswerFeedback() {
+            feedbackCallback = null;
+            document.getElementById('feedback-overlay').classList.add('hidden');
+        }
+
+        function toggleFullscreen() {
+            playSound('click');
+            const icon = document.getElementById('fullscreen-icon');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Fullscreen error: ${err.message}`);
+                });
+                icon.className = 'fa-solid fa-compress';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+                icon.className = 'fa-solid fa-expand';
+            }
+        }
+
+        function toggleAudioMute() {
+            state.isMuted = !state.isMuted;
+            const icon = document.getElementById('sound-icon');
+            if (state.isMuted) {
+                icon.className = 'fa-solid fa-volume-xmark text-rose-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-amber-400';
+                playSound('click');
+            }
+        }
+
+        function selectGradeLevel(level) {
+            playSound('click');
+            state.gradeLevel = level;
+            const btnLow = document.getElementById('tab-low');
+            const btnHigh = document.getElementById('tab-high');
+
+            const numDesc = document.getElementById('numeric-card-desc');
+            const memDesc = document.getElementById('memorize-card-desc');
+            const voiDesc = document.getElementById('voice-card-desc');
+
+            if (level === 'low') {
+                btnLow.className = "flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20";
+                btnHigh.className = "flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+
+                numDesc.textContent = "• Grid 2x2 (Rentang 1–15)";
+                memDesc.textContent = "• Grid 3x2 (6 Gambar Hewan)";
+                voiDesc.textContent = "• Kartu Soal: A, B, C, D, E";
+            } else {
+                btnHigh.className = "flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/20";
+                btnLow.className = "flex-1 py-3.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+
+                numDesc.textContent = "• Grid 3x3 (Rentang 1–30)";
+                memDesc.textContent = "• Grid 3x3 (9 Gambar Hewan)";
+                voiDesc.textContent = "• Kartu Soal: 1, 2, 3, 4, 5";
+            }
+        }
+
+        function showMainMenu() {
+            playSound('click');
+            stopTimer();
+            hideAnswerFeedback();
+            document.getElementById('menu-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('flex');
+            closeModal();
+        }
+
+        function startGame(mode) {
+            playSound('click');
+            hideAnswerFeedback();
+            state.currentMode = mode;
+            state.score = 0;
+            state.secondsElapsed = 0;
+
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex');
+
+            // Hide all module containers
+            document.getElementById('numeric-module').classList.add('hidden');
+            document.getElementById('numeric-module').classList.remove('grid');
+            document.getElementById('memorize-module').classList.add('hidden');
+            document.getElementById('memorize-module').classList.remove('flex');
+            document.getElementById('voice-module').classList.add('hidden');
+            document.getElementById('voice-module').classList.remove('flex');
+
+            const titleBadge = document.getElementById('game-title-badge');
+            const levelBadge = document.getElementById('game-level-badge');
+            levelBadge.textContent = state.gradeLevel === 'low' ? 'Tingkat: SD Kelas Rendah (1–3)' : 'Tingkat: SD Kelas Tinggi (4–6)';
+
+            if (mode === 'numeric') {
+                titleBadge.textContent = '1. NUMERIC CHALLENGE';
+                document.getElementById('numeric-module').classList.remove('hidden');
+                document.getElementById('numeric-module').classList.add('grid');
+                document.getElementById('instruction-banner').textContent = state.gradeLevel === 'low' ? 
+                    'Tugas: Hitung jumlah total 4 angka di grid 2x2!' : 
+                    'Tugas: Hitung jumlah total 9 angka di grid 3x3!';
+                document.getElementById('score-label').textContent = 'TARGET BENAR';
+                initNumericGame();
+            } else if (mode === 'memorize') {
+                titleBadge.textContent = '2. MEMORIZE CHALLENGE';
+                document.getElementById('memorize-module').classList.remove('hidden');
+                document.getElementById('memorize-module').classList.add('flex');
+                document.getElementById('score-label').textContent = 'FASE PERMAINAN';
+                initMemorizeGame();
+            } else if (mode === 'voice') {
+                titleBadge.textContent = '3. VOICE NUMERIC CHALLENGE';
+                document.getElementById('voice-module').classList.remove('hidden');
+                document.getElementById('voice-module').classList.add('flex');
+                document.getElementById('instruction-banner').textContent = 'Tugas: Klik kartu, dengarkan audio soal, dan jawab dengan tepat!';
+                document.getElementById('score-label').textContent = 'KARTU SELESAI';
+                initVoiceGame();
+            }
+        }
+
+        function startTimer(countdownSeconds = 0, onFinishCallback = null) {
+            stopTimer();
+            if (countdownSeconds > 0) {
+                state.timeLeft = countdownSeconds;
+                updateTimerDisplay(state.timeLeft);
+                state.timerInterval = setInterval(() => {
+                    state.timeLeft--;
+                    state.secondsElapsed++;
+                    updateTimerDisplay(state.timeLeft);
+                    if (state.timeLeft <= 0) {
+                        stopTimer();
+                        if (onFinishCallback) onFinishCallback();
+                    }
+                }, 1000);
+            } else {
+                state.secondsElapsed = 0;
+                updateTimerDisplay(0);
+                state.timerInterval = setInterval(() => {
+                    state.secondsElapsed++;
+                    updateTimerDisplay(state.secondsElapsed);
+                }, 1000);
+            }
+        }
+
+        function stopTimer() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').textContent = `${m}:${s}`;
+        }
+
+        function initNumericGame() {
+            state.score = 0;
+            state.targetScore = 4;
+            updateScoreDisplay(`${state.score} / ${state.targetScore}`);
+
+            const gridTitle = document.getElementById('numeric-grid-title');
+            const rangeBadge = document.getElementById('numeric-range-badge');
+
+            if (state.gradeLevel === 'low') {
+                gridTitle.innerHTML = `<i class="fa-solid fa-table-cells-large text-sm mr-1.5"></i> Grid 2x2 (4 Angka Acak)`;
+                rangeBadge.textContent = "Rentang 1–15";
+            } else {
+                gridTitle.innerHTML = `<i class="fa-solid fa-grip text-sm mr-1.5"></i> Grid 3x3 (9 Angka Acak)`;
+                rangeBadge.textContent = "Rentang 1–30";
+            }
+
+            generateNumericRound();
+            startTimer(0);
+        }
+
+        function generateNumericRound() {
+            const isLow = state.gradeLevel === 'low';
+            const min = 1;
+            const max = isLow ? 15 : 30;
+            const count = isLow ? 4 : 9;
+
+            state.numericGridData = [];
+            state.numericTargetSum = 0;
+
+            const gridContainer = document.getElementById('numeric-grid');
+            gridContainer.innerHTML = '';
+
+            const gridWrapper = document.createElement('div');
+            gridWrapper.className = isLow ? 'grid grid-cols-2 gap-4 w-full' : 'grid grid-cols-3 gap-3.5 w-full';
+
+            for (let i = 0; i < count; i++) {
+                const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+                state.numericGridData.push(randomNum);
+                state.numericTargetSum += randomNum;
+
+                const cell = document.createElement('div');
+                cell.className = `${isLow ? 'h-28 sm:h-32 text-3xl sm:text-4xl' : 'h-20 sm:h-24 text-2xl sm:text-3xl'} bg-slate-950/90 border border-amber-500/40 rounded-xl flex items-center justify-center font-black text-amber-300 shadow-inner transform transition-all duration-300 hover:scale-105 animate-bounce-short`;
+                cell.textContent = randomNum;
+                gridWrapper.appendChild(cell);
+            }
+
+            gridContainer.appendChild(gridWrapper);
+            document.getElementById('numeric-input').value = '';
+            document.getElementById('numeric-input').focus();
+        }
+
+        function submitNumericAnswer(e) {
+            e.preventDefault();
+            const inputVal = parseInt(document.getElementById('numeric-input').value, 10);
+
+            if (isNaN(inputVal)) return;
+
+            if (inputVal === state.numericTargetSum) {
+                playCorrectSound();
+                state.score++;
+                updateScoreDisplay(`${state.score} / ${state.targetScore}`);
+
+                showAnswerFeedback(true, () => {
+                    if (state.score >= state.targetScore) {
+                        stopTimer();
+                        triggerConfetti();
+                        showModal(
+                            true,
+                            'NUMERIC CHAMPION!',
+                            `Luar biasa! Anda berhasil menyelesaikan 4 ronde acak angka cepat kelas ${state.gradeLevel === 'low' ? 'Rendah (SD 1-3)' : 'Tinggi (SD 4-6)'}!`,
+                            `${formatTime(state.secondsElapsed)}`,
+                            `${state.score} / ${state.targetScore}`
+                        );
+                    } else {
+                        generateNumericRound();
+                    }
+                });
+            } else {
+                playWrongSound();
+                showAnswerFeedback(false, () => {
+                    const inputEl = document.getElementById('numeric-input');
+                    if (inputEl) {
+                        inputEl.value = '';
+                        inputEl.focus();
+                    }
+                });
+            }
+        }
+
+        function appendNumpad(inputId, val) {
+            playSound('click');
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                input.value += val;
+            }
+        }
+
+        function clearNumpad(inputId) {
+            playSound('click');
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                input.value = '';
+            }
+        }
+
+        function backspaceNumpad(inputId) {
+            playSound('click');
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                input.value = input.value.slice(0, -1);
+            }
+        }
+
+        function initMemorizeGame() {
+            const isLow = state.gradeLevel === 'low';
+            state.memorizeGridCols = 3;
+            state.memorizeGridRows = isLow ? 2 : 3; // Low = 3x2 (6 items), High = 3x3 (9 items)
+            const totalCells = state.memorizeGridCols * state.memorizeGridRows;
+
+            document.getElementById('memorize-grid-size-badge').textContent = isLow ? 'Grid 3x2 (6 Hewan)' : 'Grid 3x3 (9 Hewan)';
+
+            // Random animal selection from pool
+            const shuffledPool = [...ANIMAL_POOL].sort(() => Math.random() - 0.5);
+            state.memorizeAnimals = shuffledPool.slice(0, totalCells);
+            state.memorizeOriginalOrder = [...state.memorizeAnimals];
+            state.memorizeUserOrder = new Array(totalCells).fill(null);
+            state.selectedShelfIndex = null;
+
+            state.memorizePhase = 1;
+            document.getElementById('memorize-phase-indicator').className = "w-full flex items-center justify-between px-5 py-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs sm:text-sm font-extrabold text-amber-300 shadow-md";
+            document.getElementById('memorize-phase-indicator').children[0].textContent = "FASE 1: INGAT POSISI GAMBAR HEWAN";
+            document.getElementById('phase-timer-text').textContent = "15 DETIK";
+            document.getElementById('instruction-banner').textContent = `Mengingat Posisi: Amati letak ${totalCells} gambar hewan selama 15 detik!`;
+            document.getElementById('shelf-instruction').textContent = "Pada Fase 1, rak ini kosong. Gambar akan dipindahkan ke sini saat Fase 2 dimulai!";
+            document.getElementById('memorize-shelf').innerHTML = '';
+            document.getElementById('memorize-submit-btn').classList.add('hidden');
+            updateScoreDisplay(`Fase 1 / 2`);
+
+            renderMemorizeGridPhase1();
+
+            // 15 seconds memory phase
+            startTimer(15, () => {
+                startMemorizePhase2();
+            });
+        }
+
+        function renderMemorizeGridPhase1() {
+            const gridContainer = document.getElementById('memorize-grid');
+            const cols = state.memorizeGridCols;
+            gridContainer.className = `grid grid-cols-${cols} gap-3 w-full`;
+            gridContainer.innerHTML = '';
+
+            state.memorizeOriginalOrder.forEach((animal, idx) => {
+                const cell = document.createElement('div');
+                cell.className = 'aspect-square bg-slate-950/90 border border-cyan-500/40 rounded-xl flex flex-col items-center justify-center text-3xl sm:text-4xl shadow-inner relative select-none';
+                cell.innerHTML = `
+                    <span class="text-xs text-slate-500 font-mono absolute top-1.5 left-2">${idx + 1}</span>
+                    <span class="transform hover:scale-110 transition-transform">${animal}</span>
+                `;
+                gridContainer.appendChild(cell);
+            });
+        }
+
+        function startMemorizePhase2() {
+            playSound('click');
+            state.memorizePhase = 2;
+            document.getElementById('memorize-phase-indicator').className = "w-full flex items-center justify-between px-5 py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs sm:text-sm font-extrabold text-cyan-300 shadow-md";
+            document.getElementById('memorize-phase-indicator').children[0].textContent = "FASE 2: SUSUN KEMBALI GAMBAR KE POSISI SEMULA";
+            document.getElementById('phase-timer-text').textContent = "60 DETIK";
+            document.getElementById('instruction-banner').textContent = "Susun kembali seluruh gambar dari rak ke papan slot sebelum 60 detik habis!";
+            document.getElementById('shelf-instruction').textContent = "Pilih gambar (tap) lalu sentuh slot kosong, atau geser (drag & drop) gambar ke slot!";
+            document.getElementById('memorize-submit-btn').classList.remove('hidden');
+            updateScoreDisplay(`Fase 2 / 2`);
+
+            // Shuffle animals for choice shelf
+            const shuffledForShelf = [...state.memorizeOriginalOrder].sort(() => Math.random() - 0.5);
+            state.memorizeShelfItems = shuffledForShelf.map(animal => ({ animal, used: false }));
+
+            renderMemorizeGridPhase2();
+            renderMemorizeShelf();
+
+            // 60 seconds reconstruction phase
+            startTimer(60, () => {
+                playWrongSound();
+                showAnswerFeedback(false, () => {
+                    showModal(
+                        false,
+                        'WAKTU HABIS!',
+                        'Waktu 60 detik menyusun kembali gambar telah habis. Latih daya ingat Anda kembali!',
+                        '00:00',
+                        'Waktu Habis'
+                    );
+                });
+            });
+        }
+
+        function renderMemorizeGridPhase2() {
+            const gridContainer = document.getElementById('memorize-grid');
+            gridContainer.innerHTML = '';
+
+            const totalCells = state.memorizeGridCols * state.memorizeGridRows;
+            gridContainer.className = `grid grid-cols-${state.memorizeGridCols} gap-3 w-full`;
+
+            for (let i = 0; i < totalCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'drop-slot aspect-square bg-slate-950/60 border-2 border-dashed border-slate-700 hover:border-cyan-400 rounded-xl flex items-center justify-center text-3xl sm:text-4xl cursor-pointer relative transition-all';
+                cell.dataset.index = i;
+
+                const placedAnimal = state.memorizeUserOrder[i];
+                if (placedAnimal) {
+                    cell.innerHTML = `
+                        <span class="text-xs text-slate-500 font-mono absolute top-1.5 left-2">${i + 1}</span>
+                        <span class="transform scale-100 transition-transform">${placedAnimal}</span>
+                    `;
+                } else {
+                    cell.innerHTML = `<span class="text-xs text-slate-600 font-mono absolute top-1.5 left-2">${i + 1}</span>`;
+                }
+
+                cell.onclick = () => handleSlotClick(i);
+
+                cell.ondragover = (e) => {
+                    e.preventDefault();
+                    cell.classList.add('drag-over');
+                };
+                cell.ondragleave = () => cell.classList.remove('drag-over');
+                cell.ondrop = (e) => {
+                    e.preventDefault();
+                    cell.classList.remove('drag-over');
+                    const shelfIdx = e.dataTransfer.getData('text/plain');
+                    if (shelfIdx !== null && shelfIdx !== undefined && shelfIdx !== '') {
+                        placeShelfItemToSlot(parseInt(shelfIdx, 10), i);
+                    }
+                };
+
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        function renderMemorizeShelf() {
+            const shelf = document.getElementById('memorize-shelf');
+            shelf.innerHTML = '';
+
+            state.memorizeShelfItems.forEach((item, idx) => {
+                if (item.used) return;
+
+                const tile = document.createElement('div');
+                tile.className = `w-12 h-12 sm:w-14 sm:h-14 bg-slate-800 border border-slate-600 hover:border-amber-400 rounded-xl flex items-center justify-center text-2xl sm:text-3xl cursor-grab active:cursor-grabbing transition-all ${state.selectedShelfIndex === idx ? 'selected-shelf-item' : ''}`;
+                tile.textContent = item.animal;
+                tile.draggable = true;
+
+                tile.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', idx);
+                };
+
+                tile.onclick = () => {
+                    playSound('click');
+                    if (state.selectedShelfIndex === idx) {
+                        state.selectedShelfIndex = null;
+                    } else {
+                        state.selectedShelfIndex = idx;
+                    }
+                    renderMemorizeShelf();
+                };
+
+                shelf.appendChild(tile);
+            });
+        }
+
+        function handleSlotClick(slotIndex) {
+            playSound('click');
+            if (state.memorizeUserOrder[slotIndex]) {
+                const removedAnimal = state.memorizeUserOrder[slotIndex];
+                state.memorizeUserOrder[slotIndex] = null;
+
+                const shelfItem = state.memorizeShelfItems.find(item => item.animal === removedAnimal && item.used);
+                if (shelfItem) shelfItem.used = false;
+
+                renderMemorizeGridPhase2();
+                renderMemorizeShelf();
+                return;
+            }
+
+            if (state.selectedShelfIndex !== null) {
+                placeShelfItemToSlot(state.selectedShelfIndex, slotIndex);
+            }
+        }
+
+        function placeShelfItemToSlot(shelfIdx, slotIndex) {
+            playSound('click');
+            const shelfItem = state.memorizeShelfItems[shelfIdx];
+            if (!shelfItem || shelfItem.used) return;
+
+            if (state.memorizeUserOrder[slotIndex]) {
+                const oldAnimal = state.memorizeUserOrder[slotIndex];
+                const oldShelfItem = state.memorizeShelfItems.find(item => item.animal === oldAnimal && item.used);
+                if (oldShelfItem) oldShelfItem.used = false;
+            }
+
+            state.memorizeUserOrder[slotIndex] = shelfItem.animal;
+            shelfItem.used = true;
+            state.selectedShelfIndex = null;
+
+            renderMemorizeGridPhase2();
+            renderMemorizeShelf();
+        }
+
+        function checkMemorizeAnswer() {
+            const totalCells = state.memorizeGridCols * state.memorizeGridRows;
+            const filledCount = state.memorizeUserOrder.filter(Boolean).length;
+
+            if (filledCount < totalCells) {
+                playWrongSound();
+                showAnswerFeedback(false, () => {
+                    document.getElementById('instruction-banner').textContent = `Lengkapi seluruh ${totalCells} slot posisi gambar terlebih dahulu!`;
+                });
+                return;
+            }
+
+            let isMatch = true;
+            for (let i = 0; i < totalCells; i++) {
+                if (state.memorizeUserOrder[i] !== state.memorizeOriginalOrder[i]) {
+                    isMatch = false;
+                    break;
+                }
+            }
+
+            stopTimer();
+            if (isMatch) {
+                playCorrectSound();
+                showAnswerFeedback(true, () => {
+                    triggerConfetti();
+                    showModal(
+                        true,
+                        'INGATAN TAJAM CHAMPION!',
+                        `Sempurna! Anda berhasil meletakkan seluruh ${totalCells} gambar hewan pada posisi semula dengan tepat!`,
+                        `${formatTime(60 - state.timeLeft)}`,
+                        '100% Cocok'
+                    );
+                });
+            } else {
+                playWrongSound();
+                showAnswerFeedback(false, () => {
+                    showModal(
+                        false,
+                        'TATA LETAK BELUM TEPAT',
+                        'Posisi susunan gambar yang Anda buat belum sesuai dengan posisi awal. Tetap semangat dan coba lagi!',
+                        `${formatTime(60 - state.timeLeft)}`,
+                        'Belum Sesuai'
+                    );
+                });
+            }
+        }
+
+        function initVoiceGame() {
+            state.score = 0;
+            state.targetScore = 5;
+            state.activeVoiceIndex = null;
+            updateScoreDisplay(`0 / 5`);
+
+            const isLow = state.gradeLevel === 'low';
+            const labels = isLow ? ['A', 'B', 'C', 'D', 'E'] : ['1', '2', '3', '4', '5'];
+
+            const lowAnswers = { 'A': 16, 'B': 13, 'C': 12, 'D': 10, 'E': 12 };
+            const highAnswers = { '1': 35, '2': 28, '3': 48, '4': 42, '5': 10 };
+
+            state.voiceCards = labels.map(label => {
+                const ans = isLow ? lowAnswers[label] : highAnswers[label];
+                return {
+                    label: label,
+                    audioPath: `voice/${label}.mp3`,
+                    questionText: `Soal ${label}. Berapakah hasil akhir dari perhitungan pada kartu ini? Jawabannya adalah ${ans}.`,
+                    answer: ans,
+                    completed: false,
+                    userAnswer: null
+                };
+            });
+
+            renderVoiceCards();
+            resetVoicePanel();
+            startTimer(0);
+        }
+
+        function renderVoiceCards() {
+            const container = document.getElementById('voice-cards-container');
+            container.innerHTML = '';
+
+            state.voiceCards.forEach((card, idx) => {
+                const cardEl = document.createElement('div');
+                let statusClasses = "bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-400 cursor-pointer";
+
+                if (card.completed) {
+                    statusClasses = "bg-emerald-950/70 border-emerald-500 text-emerald-300 cursor-default";
+                } else if (state.activeVoiceIndex === idx) {
+                    statusClasses = "bg-indigo-950/90 border-indigo-400 text-amber-300 ring-2 ring-indigo-500/60 cursor-pointer";
+                }
+
+                cardEl.className = `glass-panel p-4 rounded-xl border flex flex-col items-center justify-center transition-all transform hover:-translate-y-1 ${statusClasses}`;
+                cardEl.innerHTML = `
+                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Soal</span>
+                    <span class="font-black text-2xl sm:text-3xl my-1" style="font-family: 'Rajdhani', sans-serif;">${card.label}</span>
+                    <i class="fa-solid ${card.completed ? 'fa-circle-check text-emerald-400' : 'fa-headphones text-slate-500'} text-sm mt-1"></i>
+                `;
+
+                cardEl.onclick = () => selectVoiceCard(idx);
+                container.appendChild(cardEl);
+            });
+        }
+
+        function selectVoiceCard(idx) {
+            const card = state.voiceCards[idx];
+            if (card.completed) return;
+
+            playSound('click');
+            state.activeVoiceIndex = idx;
+            renderVoiceCards();
+
+            document.getElementById('voice-card-title').textContent = `KARTU SOAL ${card.label}`;
+            document.getElementById('voice-card-status').textContent = `Dengarkan audio dan masukkan jawaban untuk Kartu ${card.label}.`;
+
+            const playBtn = document.getElementById('play-audio-btn');
+            const input = document.getElementById('voice-input');
+            const submitBtn = document.getElementById('voice-submit-btn');
+
+            playBtn.disabled = false;
+            input.disabled = false;
+            submitBtn.disabled = false;
+
+            input.value = '';
+            input.focus();
+
+            playCurrentCardAudio();
+        }
+
+        function resetVoicePanel() {
+            document.getElementById('voice-card-title').textContent = 'PILIH KARTU SOAL DI ATAS';
+            document.getElementById('voice-card-status').textContent = 'Klik salah satu kartu soal untuk mendengarkan instruksi suara.';
+            document.getElementById('play-audio-btn').disabled = true;
+            document.getElementById('voice-input').disabled = true;
+            document.getElementById('voice-submit-btn').disabled = true;
+            document.getElementById('voice-input').value = '';
+        }
+
+        function playCurrentCardAudio() {
+            if (state.activeVoiceIndex === null) return;
+            const card = state.voiceCards[state.activeVoiceIndex];
+
+            const audio = new Audio(card.audioPath);
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    speakText(card.questionText);
+                });
+            } else {
+                speakText(card.questionText);
+            }
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'id-ID';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function submitVoiceAnswer(e) {
+            e.preventDefault();
+            if (state.activeVoiceIndex === null) return;
+
+            const card = state.voiceCards[state.activeVoiceIndex];
+            const inputVal = parseInt(document.getElementById('voice-input').value, 10);
+
+            if (isNaN(inputVal)) return;
+
+            if (inputVal === card.answer) {
+                playCorrectSound();
+                card.completed = true;
+                card.userAnswer = inputVal;
+                state.score++;
+                updateScoreDisplay(`${state.score} / ${state.targetScore}`);
+
+                showAnswerFeedback(true, () => {
+                    if (state.score >= state.targetScore) {
+                        stopTimer();
+                        triggerConfetti();
+                        showModal(
+                            true,
+                            'CHAMPION VOICE NUMERIC!',
+                            'Sempurna! Seluruh 5 kartu soal audio pendengaran berhasil Anda selesaikan dengan tepat!',
+                            `${formatTime(state.secondsElapsed)}`,
+                            '5 / 5 Kartu Selesai'
+                        );
+                    } else {
+                        resetVoicePanel();
+                        renderVoiceCards();
+                    }
+                });
+            } else {
+                playWrongSound();
+                showAnswerFeedback(false, () => {
+                    const inputEl = document.getElementById('voice-input');
+                    if (inputEl) {
+                        inputEl.value = '';
+                        inputEl.focus();
+                    }
+                });
+            }
+        }
+
+        function updateScoreDisplay(text) {
+            document.getElementById('score-display').textContent = text;
+        }
+
+        function formatTime(totalSec) {
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function showModal(isWin, title, desc, statTime, statScore) {
+            const modal = document.getElementById('game-modal');
+            const box = document.getElementById('modal-box');
+            const badge = document.getElementById('modal-badge');
+
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            document.getElementById('stat-time').textContent = statTime;
+            document.getElementById('stat-score').textContent = statScore;
+
+            if (isWin) {
+                badge.className = "w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-4xl shadow-inner";
+                badge.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+            } else {
+                badge.className = "w-20 h-20 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center text-rose-400 text-4xl shadow-inner";
+                badge.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                box.classList.remove('scale-95', 'opacity-0');
+                box.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('game-modal');
+            const box = document.getElementById('modal-box');
+            box.classList.remove('scale-100', 'opacity-100');
+            box.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function restartCurrentGame() {
+            closeModal();
+            if (state.currentMode) startGame(state.currentMode);
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 90,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
